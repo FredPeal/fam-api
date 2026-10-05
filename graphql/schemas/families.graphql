@@ -1,0 +1,96 @@
+"A household that groups users and their shared finances."
+type Family {
+    "Unique primary key."
+    id: ID!
+
+    "Public identifier, safe to expose to clients."
+    uuid: String!
+
+    "Display name of the family."
+    name: String!
+
+    "Optional postal address."
+    address: String
+
+    "User who owns the family."
+    user: User! @belongsTo
+
+    "Users who are members of the family."
+    members: [User!]! @belongsToMany
+
+    "Invitation link used to bring new members into the family."
+    shareLink: FamilyShareLink @hasOne
+
+    "When the family was created."
+    created_at: DateTime!
+
+    "When the family was last updated."
+    updated_at: DateTime!
+}
+
+"Invitation link that lets a person join a family."
+type FamilyShareLink {
+    "Unique primary key."
+    id: ID!
+
+    "Code embedded in the invitation link."
+    code: String!
+
+    "Full URL to share with invitees."
+    full_link: String!
+
+    "When the link was created."
+    created_at: DateTime!
+
+    "When the link was last renewed."
+    updated_at: DateTime!
+}
+
+input CreateFamilyInput {
+    name: String! @rules(apply: ["required", "string", "max:255"])
+    address: String @rules(apply: ["nullable", "string", "max:255"])
+}
+
+input UpdateFamilyInput {
+    name: String! @rules(apply: ["required", "string", "max:255"])
+    address: String @rules(apply: ["nullable", "string", "max:255"])
+}
+
+extend type Query @guard {
+    "List the families owned by the authenticated user."
+    families: [Family!]! @field(resolver: "FamiliesQueries@families")
+
+    "Find a family owned by the authenticated user."
+    family(id: ID!): Family! @field(resolver: "FamiliesQueries@family")
+}
+
+type Mutation @guard {
+    "Create a family owned by the authenticated user."
+    createFamily(input: CreateFamilyInput! @spread): Family!
+        @field(resolver: "FamiliesMutationManagement@create")
+
+    "Update a family owned by the authenticated user."
+    updateFamily(id: ID!, input: UpdateFamilyInput! @spread): Family!
+        @field(resolver: "FamiliesMutationManagement@update")
+
+    "Delete a family owned by the authenticated user."
+    deleteFamily(id: ID!): Boolean!
+        @field(resolver: "FamiliesMutationManagement@delete")
+
+    "Email the family invitation link to one or more people."
+    inviteToFamily(
+        id: ID!
+        emails: [String!]!
+            @rulesForArray(apply: ["required", "array", "min:1", "max:20"])
+            @rules(apply: ["required", "email", "max:255"])
+    ): FamilyShareLink! @field(resolver: "FamiliesMutationManagement@invite")
+
+    "Generate a new invitation code so previously shared links stop working."
+    renewFamilyShareLink(id: ID!): FamilyShareLink!
+        @field(resolver: "FamiliesMutationManagement@renewShareLink")
+
+    "Join the family behind an invitation link as the authenticated user."
+    acceptFamilyInvitation(
+        code: String! @rules(apply: ["required", "string", "max:255"])
+    ): Family! @field(resolver: "FamiliesMutationManagement@acceptInvitation")
+}
