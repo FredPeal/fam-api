@@ -1,0 +1,116 @@
+"Kind of account. Each value maps to a row id in `account_types`."
+enum AccountTypeId {
+    CASH @enum(value: 1)
+    BANK @enum(value: 2)
+    SAVINGS @enum(value: 3)
+    CREDIT_CARD @enum(value: 4)
+    INVESTMENT @enum(value: 5)
+    LOAN @enum(value: 6)
+    DIGITAL_WALLET @enum(value: 7)
+}
+
+"Reference row describing a kind of account."
+type AccountType {
+    "Unique primary key. Matches the AccountTypeId enum."
+    id: ID!
+
+    "Human readable name."
+    name: String!
+}
+
+"Currency an account or transaction is denominated in."
+type Currency {
+    "Unique primary key."
+    id: ID!
+
+    "ISO 4217 code, e.g. USD or DOP."
+    code: String!
+
+    "Human readable name."
+    name: String!
+}
+
+"A money account owned by a user, such as a bank account or a wallet."
+type Account {
+    "Unique primary key."
+    id: ID!
+
+    "Display name of the account."
+    name: String!
+
+    "Optional free text."
+    description: String
+
+    "Optional icon identifier chosen by the client."
+    icon: String
+
+    "Balance the account started with."
+    initial_balance: Float!
+
+    "Balance after every recorded transaction."
+    current_balance: Float!
+
+    "Kind of account."
+    accountType: AccountType! @belongsTo
+
+    "Currency of the balances."
+    currency: Currency! @belongsTo
+
+    "User who owns the account."
+    user: User! @belongsTo
+
+    "Families the account is shared with."
+    families: [Family!]! @belongsToMany
+
+    "When the account was created."
+    created_at: DateTime!
+
+    "When the account was last updated."
+    updated_at: DateTime!
+}
+
+input CreateAccountInput {
+    name: String! @rules(apply: ["required", "string", "max:255"])
+    account_type: AccountTypeId!
+    currency_code: String! @rules(apply: ["required", "string", "exists:currencies,code"])
+    description: String @rules(apply: ["nullable", "string", "max:255"])
+    icon: String @rules(apply: ["nullable", "string", "max:255"])
+    initial_balance: Float @rules(apply: ["nullable", "numeric", "min:-9999999999999.99", "max:9999999999999.99"])
+}
+
+input UpdateAccountInput {
+    name: String! @rules(apply: ["required", "string", "max:255"])
+    account_type: AccountTypeId!
+    currency_code: String! @rules(apply: ["required", "string", "exists:currencies,code"])
+    description: String @rules(apply: ["nullable", "string", "max:255"])
+    icon: String @rules(apply: ["nullable", "string", "max:255"])
+    initial_balance: Float @rules(apply: ["nullable", "numeric", "min:-9999999999999.99", "max:9999999999999.99"])
+}
+
+extend type Query @guard {
+    "List the accounts owned by the authenticated user."
+    accounts: [Account!]! @field(resolver: "AccountsQueries@accounts")
+
+    "Find an account owned by the authenticated user."
+    account(id: ID!): Account! @field(resolver: "AccountsQueries@account")
+
+    "List the available account types."
+    accountTypes: [AccountType!]! @field(resolver: "AccountTypesQueries@accountTypes")
+
+    "List the currencies an account can use."
+    currencies: [Currency!]! @field(resolver: "CurrenciesQueries@currencies")
+}
+
+extend type Mutation @guard {
+    "Create an account owned by the authenticated user."
+    createAccount(input: CreateAccountInput! @spread): Account!
+        @field(resolver: "AccountsMutationManagement@create")
+
+    "Update an account owned by the authenticated user."
+    updateAccount(id: ID!, input: UpdateAccountInput! @spread): Account!
+        @field(resolver: "AccountsMutationManagement@update")
+
+    "Delete an account owned by the authenticated user."
+    deleteAccount(id: ID!): Boolean!
+        @field(resolver: "AccountsMutationManagement@delete")
+}
