@@ -1,0 +1,95 @@
+"A label a user assigns to transactions. It can be shared with the user's families."
+type Category {
+    "Unique primary key."
+    id: ID!
+
+    "Display name, unique per user."
+    name: String!
+
+    "Optional free text."
+    description: String
+
+    "Optional icon identifier chosen by the client."
+    icon: String
+
+    "User who owns the category."
+    user: User! @belongsTo
+
+    "Families the category is currently shared with."
+    families: [Family!]! @belongsToMany
+
+    "When the category was created."
+    created_at: DateTime!
+
+    "When the category was last updated."
+    updated_at: DateTime!
+}
+
+"Link that shares a category with a family."
+type FamilyCategory {
+    "Unique primary key."
+    id: ID!
+
+    "Family the category is shared with."
+    family: Family! @belongsTo
+
+    "Category being shared."
+    category: Category! @belongsTo
+
+    "When the category was shared."
+    created_at: DateTime!
+
+    "When the link was last updated."
+    updated_at: DateTime!
+}
+
+input CreateCategoryInput {
+    name: String! @rules(apply: ["required", "string", "max:255"])
+    description: String @rules(apply: ["nullable", "string", "max:255"])
+    icon: String @rules(apply: ["nullable", "string", "max:255"])
+}
+
+input UpdateCategoryInput {
+    name: String! @rules(apply: ["required", "string", "max:255"])
+    description: String @rules(apply: ["nullable", "string", "max:255"])
+    icon: String @rules(apply: ["nullable", "string", "max:255"])
+}
+
+input CreateFamilyCategoryInput {
+    family_id: ID! @rules(apply: ["required", "integer"])
+    category_id: ID! @rules(apply: ["required", "integer"])
+}
+
+extend type Query @guard {
+    "List the categories owned by the authenticated user."
+    categories: [Category!]! @field(resolver: "CategoriesQueries@categories")
+
+    "Find a category owned by the authenticated user."
+    category(id: ID!): Category! @field(resolver: "CategoriesQueries@category")
+
+    "List the categories shared with a family the authenticated user owns or belongs to."
+    familyCategories(family_id: ID!): [FamilyCategory!]!
+        @field(resolver: "FamilyCategoriesQueries@familyCategories")
+}
+
+extend type Mutation @guard {
+    "Create a category owned by the authenticated user."
+    createCategory(input: CreateCategoryInput! @spread): Category!
+        @field(resolver: "CategoriesMutationManagement@create")
+
+    "Update a category owned by the authenticated user."
+    updateCategory(id: ID!, input: UpdateCategoryInput! @spread): Category!
+        @field(resolver: "CategoriesMutationManagement@update")
+
+    "Delete a category owned by the authenticated user."
+    deleteCategory(id: ID!): Boolean!
+        @field(resolver: "CategoriesMutationManagement@delete")
+
+    "Share a category owned by the authenticated user with a family they own or belong to."
+    createFamilyCategory(input: CreateFamilyCategoryInput! @spread): FamilyCategory!
+        @field(resolver: "FamilyCategoriesMutationManagement@create")
+
+    "Stop sharing a category with a family. Allowed to the family owner and to the category owner."
+    deleteFamilyCategory(id: ID!): Boolean!
+        @field(resolver: "FamilyCategoriesMutationManagement@delete")
+}

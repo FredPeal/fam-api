@@ -7,6 +7,7 @@ namespace Fam\Families\Models;
 use App\Models\User;
 use Database\Factories\FamilyFactory;
 use Fam\BaseModel;
+use Fam\Categories\Models\Category;
 use Fam\Families\Observers\FamilyObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
@@ -50,6 +51,18 @@ class Family extends BaseModel
     }
 
     /**
+     * Categories currently shared with the family.
+     *
+     * @return BelongsToMany<Category, $this>
+     */
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'families_categories', 'families_id', 'categories_id')
+            ->withTimestamps()
+            ->wherePivotNull('deleted_at');
+    }
+
+    /**
      * @return HasOne<FamilyShareLink, $this>
      */
     public function shareLink(): HasOne
@@ -64,5 +77,20 @@ class Family extends BaseModel
     public function scopeOwnedBy(Builder $query, User $user): Builder
     {
         return $query->where('user_id', $user->id);
+    }
+
+    /**
+     * Families the user owns or is a member of.
+     *
+     * @param  Builder<Family>  $query
+     * @return Builder<Family>
+     */
+    public function scopeAccessibleBy(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $query) use ($user): void {
+            $query
+                ->where('user_id', $user->id)
+                ->orWhereHas('members', fn (Builder $members) => $members->whereKey($user->id));
+        });
     }
 }
