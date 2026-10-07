@@ -1,0 +1,40 @@
+"Classification of where a transaction comes from, e.g. manual, email or bank_api."
+type SourceType {
+    "Unique primary key."
+    id: ID!
+
+    "Machine name, unique."
+    name: String!
+
+    "Optional icon identifier."
+    icon: String
+}
+
+"A concrete place a user's transactions come from, such as a mailbox or a bank connection."
+type Source {
+    "Unique primary key."
+    id: ID!
+
+    "Display name."
+    name: String!
+
+    "Optional icon identifier."
+    icon: String
+
+    "Kind of source."
+    sourceType: SourceType! @belongsTo
+
+    "User who owns the source."
+    user: User! @belongsTo
+
+    "When the source was created."
+    created_at: DateTime!
+
+    "When the source was last updated."
+    updated_at: DateTime!
+}
+
+extend type Query @guard {
+    "List the sources owned by the authenticated user."
+    sources: [Source!]! @field(resolver: "SourcesQueries@sources")
+}
