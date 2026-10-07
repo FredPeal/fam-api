@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             SourceTypeSeeder::class,
             SourceSeeder::class,
+            CategorySeeder::class,
         ]);
     }
 }

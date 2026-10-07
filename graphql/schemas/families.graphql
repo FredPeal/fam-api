@@ -18,6 +18,9 @@ type Family {
     "Users who are members of the family."
     members: [User!]! @belongsToMany
 
+    "Categories currently shared with the family."
+    categories: [Category!]! @belongsToMany
+
     "Invitation link used to bring new members into the family."
     shareLink: FamilyShareLink @hasOne
 
