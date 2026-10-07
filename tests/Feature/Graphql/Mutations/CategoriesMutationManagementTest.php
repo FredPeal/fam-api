@@ -4,6 +4,7 @@ namespace Tests\Feature\Graphql\Mutations;
 
 use App\Models\User;
 use Fam\Categories\Models\Category;
+use Fam\Merchants\Models\Merchant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Nuwave\Lighthouse\Testing\MakesGraphQLRequests;
@@ -173,6 +174,21 @@ class CategoriesMutationManagementTest extends TestCase
         $response->assertGraphQLErrorFree();
         $response->assertJsonPath('data.deleteCategory', true);
         $this->assertModelMissing($category);
+    }
+
+    public function test_delete_category_that_still_has_merchants_returns_error_and_keeps_it(): void
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->for($user)->create();
+        Merchant::factory()->for($category)->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->graphQL(/** @lang GraphQL */ '
+            mutation ($id: ID!) { deleteCategory(id: $id) }
+        ', ['id' => $category->id]);
+
+        $response->assertGraphQLErrorMessage('This category still has merchants. Move or delete them first.');
+        $this->assertModelExists($category);
     }
 
     public function test_delete_category_owned_by_another_user_returns_not_found_error_and_keeps_it(): void

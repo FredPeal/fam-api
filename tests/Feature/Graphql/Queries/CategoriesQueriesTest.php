@@ -6,6 +6,7 @@ use App\Models\User;
 use Fam\Categories\Models\Category;
 use Fam\Categories\Models\FamilyCategory;
 use Fam\Families\Models\Family;
+use Fam\Merchants\Models\Merchant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Nuwave\Lighthouse\Testing\MakesGraphQLRequests;
@@ -49,11 +50,12 @@ class CategoriesQueriesTest extends TestCase
         $removedFamily = Family::factory()->create(['name' => 'Removed']);
         FamilyCategory::factory()->for($sharedFamily, 'family')->for($category, 'category')->create();
         FamilyCategory::factory()->for($removedFamily, 'family')->for($category, 'category')->removed()->create();
+        Merchant::factory()->for($category)->create(['name' => 'Bravo']);
         Sanctum::actingAs($user);
 
         $response = $this->graphQL(/** @lang GraphQL */ '
             query ($id: ID!) {
-                category(id: $id) { id name description icon user { id } families { name } }
+                category(id: $id) { id name description icon user { id } families { name } merchants { name } }
             }
         ', ['id' => $category->id]);
 
@@ -65,6 +67,7 @@ class CategoriesQueriesTest extends TestCase
             'icon' => 'cart',
             'user' => ['id' => (string) $user->id],
             'families' => [['name' => 'Shared']],
+            'merchants' => [['name' => 'Bravo']],
         ]);
     }
 

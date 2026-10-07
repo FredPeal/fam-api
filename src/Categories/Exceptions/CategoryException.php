@@ -22,6 +22,11 @@ class CategoryException extends Exception implements ClientAware
         return new self('This category is already shared with the family.');
     }
 
+    public static function hasMerchants(): self
+    {
+        return new self('This category still has merchants. Move or delete them first.');
+    }
+
     public function isClientSafe(): bool
     {
         return true;
