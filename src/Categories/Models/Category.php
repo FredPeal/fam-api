@@ -8,6 +8,7 @@ use App\Models\User;
 use Database\Factories\CategoryFactory;
 use Fam\BaseModel;
 use Fam\Families\Models\Family;
+use Fam\Merchants\Models\Merchant;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -42,6 +43,14 @@ class Category extends BaseModel
     public function familyCategories(): HasMany
     {
         return $this->hasMany(FamilyCategory::class, 'categories_id');
+    }
+
+    /**
+     * @return HasMany<Merchant, $this>
+     */
+    public function merchants(): HasMany
+    {
+        return $this->hasMany(Merchant::class, 'category_id');
     }
 
     /**

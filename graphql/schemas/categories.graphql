@@ -18,6 +18,9 @@ type Category {
     "Families the category is currently shared with."
     families: [Family!]! @belongsToMany
 
+    "Merchants that belong to the category."
+    merchants: [Merchant!]! @hasMany
+
     "When the category was created."
     created_at: DateTime!
 

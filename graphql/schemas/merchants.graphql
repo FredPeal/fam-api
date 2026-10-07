@@ -1,0 +1,33 @@
+"A business or person a user pays or receives money from. It belongs to one of the user's categories."
+type Merchant {
+    "Unique primary key."
+    id: ID!
+
+    "Unique short identifier. Generated from the name when not given."
+    code: String!
+
+    "Display name."
+    name: String!
+
+    "Optional free text."
+    description: String
+
+    "Category the merchant belongs to."
+    category: Category! @belongsTo
+
+    "When the merchant was created."
+    created_at: DateTime!
+
+    "When the merchant was last updated."
+    updated_at: DateTime!
+}
+
+extend type Query @guard {
+    "List the merchants owned by the authenticated user, optionally limited to one category."
+    merchants(category_id: ID @rules(apply: ["nullable", "integer"])): [Merchant!]!
+        @field(resolver: "MerchantsQueries@merchants")
+
+    "Find a merchant owned by the authenticated user."
+    merchant(id: ID!): Merchant! @field(resolver: "MerchantsQueries@merchant")
+}
+
