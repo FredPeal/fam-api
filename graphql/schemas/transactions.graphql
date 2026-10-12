@@ -1,0 +1,126 @@
+"""
+Kind of transaction. It decides how the amount affects the account balance:
+INCOME always adds and EXPENSE always subtracts, whatever sign the amount has.
+TRANSFER and ADJUSTMENT keep the sign given, so a negative amount subtracts.
+"""
+enum TransactionType {
+    INCOME @enum(value: "income")
+    EXPENSE @enum(value: "expense")
+    TRANSFER @enum(value: "transfer")
+    ADJUSTMENT @enum(value: "adjustment")
+}
+
+"A movement of money on one of the user's accounts."
+type Transaction {
+    "Unique primary key."
+    id: ID!
+
+    "Kind of transaction."
+    type: TransactionType!
+
+    "Absolute amount in the transaction currency."
+    amount: Float!
+
+    "Amount with the sign it applies to the account: positive adds, negative subtracts."
+    amount_signed: Float!
+
+    "Account currency units per transaction currency unit. 1 when both are the same."
+    exchange_rate: Float!
+
+    "When the movement happened."
+    occurred_at: DateTime!
+
+    "Balance the account had right before this transaction was applied."
+    last_balance_amount: Float
+
+    "Short description."
+    description: String
+
+    "Longer free text."
+    notes: String
+
+    "Account the transaction is on."
+    account: Account! @belongsTo
+
+    "User who owns the transaction."
+    user: User! @belongsTo
+
+    "Currency of the amount."
+    currency: Currency! @belongsTo
+
+    "Where the transaction came from."
+    source: Source @belongsTo
+
+    "Merchant paid or paying."
+    merchant: Merchant @belongsTo
+
+    "Category assigned to the transaction."
+    category: Category @belongsTo
+
+    "When the transaction was created."
+    created_at: DateTime!
+
+    "When the transaction was last updated."
+    updated_at: DateTime!
+}
+
+input CreateTransactionInput {
+    account_id: ID! @rules(apply: ["required", "integer"])
+    type: TransactionType!
+    "Non-zero amount in the transaction currency. See TransactionType for how the sign is used."
+    amount: Float! @rules(apply: ["required", "numeric", "not_in:0", "min:-9999999999999.99", "max:9999999999999.99"])
+    currency_code: String! @rules(apply: ["required", "string", "exists:currencies,code"])
+    occurred_at: DateTime!
+    exchange_rate: Float @rules(apply: ["nullable", "numeric", "min:0.000001", "max:999999999.999999"])
+    source_id: ID @rules(apply: ["nullable", "integer"])
+    merchant_id: ID @rules(apply: ["nullable", "integer"])
+    category_id: ID @rules(apply: ["nullable", "integer"])
+    description: String @rules(apply: ["nullable", "string", "max:255"])
+    notes: String @rules(apply: ["nullable", "string", "max:65535"])
+}
+
+input UpdateTransactionInput {
+    account_id: ID! @rules(apply: ["required", "integer"])
+    type: TransactionType!
+    "Non-zero amount in the transaction currency. See TransactionType for how the sign is used."
+    amount: Float! @rules(apply: ["required", "numeric", "not_in:0", "min:-9999999999999.99", "max:9999999999999.99"])
+    currency_code: String! @rules(apply: ["required", "string", "exists:currencies,code"])
+    occurred_at: DateTime!
+    exchange_rate: Float @rules(apply: ["nullable", "numeric", "min:0.000001", "max:999999999.999999"])
+    source_id: ID @rules(apply: ["nullable", "integer"])
+    merchant_id: ID @rules(apply: ["nullable", "integer"])
+    category_id: ID @rules(apply: ["nullable", "integer"])
+    description: String @rules(apply: ["nullable", "string", "max:255"])
+    notes: String @rules(apply: ["nullable", "string", "max:65535"])
+}
+
+extend type Query @guard {
+    "List the transactions owned by the authenticated user, newest first, with optional filters."
+    transactions(
+        account_id: ID @rules(apply: ["nullable", "integer"])
+        category_id: ID @rules(apply: ["nullable", "integer"])
+        merchant_id: ID @rules(apply: ["nullable", "integer"])
+        type: TransactionType
+        "Only transactions that occurred at or after this moment."
+        from: DateTime
+        "Only transactions that occurred at or before this moment."
+        to: DateTime
+    ): [Transaction!]! @paginate(builder: "App\\Graphql\\Queries\\TransactionsQueries@transactions", defaultCount: 20, maxCount: 100)
+
+    "Find a transaction owned by the authenticated user."
+    transaction(id: ID!): Transaction! @field(resolver: "TransactionsQueries@transaction")
+}
+
+extend type Mutation @guard {
+    "Record a transaction on an account owned by the authenticated user and apply it to the account balance."
+    createTransaction(input: CreateTransactionInput! @spread): Transaction!
+        @field(resolver: "TransactionsMutationManagement@create")
+
+    "Update a transaction owned by the authenticated user, moving its effect between accounts if needed."
+    updateTransaction(id: ID!, input: UpdateTransactionInput! @spread): Transaction!
+        @field(resolver: "TransactionsMutationManagement@update")
+
+    "Delete a transaction owned by the authenticated user and revert it from the account balance."
+    deleteTransaction(id: ID!): Boolean!
+        @field(resolver: "TransactionsMutationManagement@delete")
+}
